@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orderdev-config
+  namespace: ordendev
+data:
+  OTEL_EXPORTER_OTLP_ENDPOINT: "none"
+  PATIENTS_SERVICE_URL: "http://ms-patients:8080"
+  DOCTOR_SERVICE_URL: "http://ms-doctors:8080"
+  LOGGER_LEVEL: "info"

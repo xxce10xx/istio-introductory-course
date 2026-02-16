@@ -1,0 +1,15 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-appointments-to-patients
+  namespace: ordendev
+spec:
+  selector:
+    matchLabels:
+      app: ms-patients
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/ordendev/sa/default"

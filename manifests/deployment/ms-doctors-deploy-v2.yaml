@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: ordendev
+  name: ms-doctors-v2
+  labels:
+    app: ms-doctors
+    version: v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ms-doctors
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: ms-doctors
+        version: v2
+      annotations:
+        sidecar.istio.io/prometheusMergeMetrics: "false"
+        prometheus.io/scrape: "true"             # indica que Prometheus debe scrappear este pod
+        prometheus.io/path: /prom/metrics        # ruta donde exponen las métricas
+        prometheus.io/port: "8080"               # puerto donde exponen las métricas
+        prometheus.io/scheme: "http"
+        prometheus.io/container: ms-doctors
+    spec:
+      containers:
+        - name: ms-doctors
+          image: cedser/doctor-service:1.4
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "125m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          envFrom:
+            - configMapRef:
+                name: orderdev-config
+          env:
+            - name: HOST
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: host
+            - name: DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: dbname
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: password
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3

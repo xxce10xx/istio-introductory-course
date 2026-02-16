@@ -1,0 +1,15 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ms-appointments
+  namespace: ordendev
+spec:
+  hosts:
+    - ms-appointments
+  http:
+    - route:
+        - destination:
+            host: ms-appointments
+            subset: v1
+            port:
+              number: 8080

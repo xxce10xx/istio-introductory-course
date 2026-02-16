@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-doctors
+  namespace: ordendev
+  labels:
+    app: ms-doctors
+spec:
+  type: ClusterIP
+  selector:
+    app: ms-doctors
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 3000

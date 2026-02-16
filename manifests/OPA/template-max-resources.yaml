@@ -1,0 +1,59 @@
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8smaxmemoryrequest
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sMaxMemoryRequest
+      validation:
+        openAPIV3Schema:
+          properties:
+            maxMemory:
+              type: string
+              description: "Máxima memoria permitida en requests (ej: 512Mi, 1Gi)"
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8smaxmemoryrequest
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          req := container.resources.requests.memory
+          req != ""
+          max := input.parameters.maxMemory
+
+          exceeds(req, max)
+
+          msg := sprintf("El contenedor '%s' solicita %s de memoria, que excede el máximo permitido (%s)", [container.name, req, max])
+        }
+
+        # Convierte strings tipo "512Mi", "1Gi" a bytes y compara
+        exceeds(req, max) {
+          parse_bytes(req) > parse_bytes(max)
+        }
+
+        parse_bytes(mem) = bytes {
+          endswith(mem, "Mi")
+          n := to_number(trim_suffix(mem, "Mi"))
+          bytes := n * 1024 * 1024
+        }
+
+        parse_bytes(mem) = bytes {
+          endswith(mem, "Gi")
+          n := to_number(trim_suffix(mem, "Gi"))
+          bytes := n * 1024 * 1024 * 1024
+        }
+
+        parse_bytes(mem) = bytes {
+          endswith(mem, "M")
+          n := to_number(trim_suffix(mem, "M"))
+          bytes := n * 1000 * 1000
+        }
+
+        parse_bytes(mem) = bytes {
+          endswith(mem, "G")
+          n := to_number(trim_suffix(mem, "G"))
+          bytes := n * 1000 * 1000 * 1000
+        }

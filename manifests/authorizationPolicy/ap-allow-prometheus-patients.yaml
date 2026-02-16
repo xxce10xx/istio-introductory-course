@@ -1,0 +1,20 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-prometheus-to-patients
+  namespace: ordendev
+spec:
+  selector:
+    matchLabels:
+      app: ms-patients
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/monitoring/sa/prometheus"
+      to:
+        - operation:
+            methods: ["GET"]
+            paths:
+              - "/prom/metrics"

@@ -1,0 +1,18 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ms-doctors
+  namespace: ordendev
+spec:
+  hosts:
+    - ms-doctors
+  http:
+    - route:
+        - destination:
+            host: ms-doctors
+            subset: v1
+          weight: 80
+        - destination:
+            host: ms-doctors
+            subset: v2
+          weight: 20

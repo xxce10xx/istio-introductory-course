@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "outDir": "./dist",
+        "rootDir": "./src",
+        "lib": ["ES2021", "DOM"],
+        "target": "ES2021",
+        "moduleResolution": "node",
+        "module": "CommonJS",
+	"types": ["node"],
+        "strict": false,
+        "sourceMap": true,
+        "esModuleInterop": true,
+	"skipLibCheck": true,
+        "declaration": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true
+    },
+    "include": ["src/**/*.ts"],
+}

@@ -1,0 +1,20 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-curl-mtls-to-appointments
+  namespace: ordendev
+spec:
+  selector:
+    matchLabels:
+      app: ms-appointments
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/ordendev/sa/sa-curl-mtls"
+      to:
+        - operation:
+            methods: ["GET"]
+            paths:
+              - "/api/appointments/*"

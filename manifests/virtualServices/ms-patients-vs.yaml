@@ -1,0 +1,15 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ms-patients
+  namespace: ordendev
+spec:
+  hosts:
+    - ms-patients
+  http:
+    - route:
+        - destination:
+            host: ms-patients
+            subset: v1
+            port:
+              number: 8080

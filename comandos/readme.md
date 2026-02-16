@@ -1,0 +1,2 @@
+# Comandos
+Esta sección también es muy sencilla, únicamente contiene un archivo de texto con comandos de utilidad para usuarios nuevos o experimentados que han olvidado algún comando especial. [Comandos](./comandos.txt)

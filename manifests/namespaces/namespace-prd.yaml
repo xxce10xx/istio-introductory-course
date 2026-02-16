@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ordenprd
+  labels:
+    environment: prd
+    istio-injection: enabled

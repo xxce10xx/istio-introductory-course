@@ -1,0 +1,163 @@
+##INSTALAR ISTIO
+1. Descargar: curl -L https://istio.io/downloadIstio | sh -
+2. Actualizar el path:
+	nano ~/.bashrc
+	export PATH=$PATH:[ruta_a_istio]/bin
+	source ~/.bashrc
+3. Instalar: istioctl install --set profile=demo -y 
+[Recordemos que puedes usar perfiles como demo, default, minimal]
+
+##CREACIÓN DE RECURSOS
+kubectl apply -f <nombre-archivo>.yaml
+
+##VER LABELS ASOCIADAS A UN NAMESPACE
+kubectl get namespace <nombre-namespace> --show-labels
+
+##ASIGNAR LABELS PARA UN NAMESPACE
+kubectl label namespace <nombre-namespace> <clave>=<valor>
+
+##SETEAR EL CONTEXT PARA INTERACCIÓN MÁS SENCILLA CON EL CLUSTER - MODIFICA ARCHIVO .kube/config
+kubectl config set-context --current --namespace=<nombre-namespace>
+kubectl config get-contexts
+
+##OBTENER LOS RECURSOS GESTIONADOS POR HELM
+helm list --all-namespaces
+
+##AGREGAR REPOSITORIO A HELM (POR EJEMPLO PARA INSTALAR KIALI)
+helm repo add kiali https://kiali.org/helm-charts
+
+##ACTUALIZAR REPOSITORIOS HELM
+helm repo update
+
+##INSTALAR RECURSOS CON HELM
+helm install --namespace istio-system --create-namespace \
+  --set cr.create=true \
+  --set cr.namespace=istio-system \
+  --version 2.19.0 \
+  kiali-server kiali/kiali-server
+
+##INSTALAR SAMPLES/ADD-ONS 
+kubectl apply -f [ruta_istio]/samples/addons/
+
+##VER DETALLES DE DESPLIGUE DE CUALQUIER RECURSO
+kubectl get <resource>/<resource-name> -o yaml
+
+##DESCRIBIR UN RECURSO
+kubectl describe <resource>/<resource-name>
+
+##CREAR UN TOKEN PARA ACCEDER A KIALI
+kubectl create token kiali-sa -n istio-system
+
+##ESCALAR UN DEPLOY/STATEFULSET
+kubectl scale deploy/<deployment-name> --replicas=0
+kubectl scale statefulset/loki --replicas=0 -n istio-system
+
+##REINICAR UN DESPLIEGUE
+kubectl rollout restart deploy/<deployment-name>
+
+##ACTUALIZAR UN RECURSO GESTIONADO POR HELM
+helm upgrade alloy grafana/alloy \
+  --namespace observability \
+  --set controller.type=daemonset \
+  --set alloy.configMap.create=true \
+  --set alloy.configMap.name=alloy-config \
+  --set-file alloy.configMap.content=alloy-new.hcl
+
+##OBTENER DATA DE LOKI
+curl -G "http://localhost:3100/loki/api/v1/query_range" \
+  --data-urlencode 'query={service_name="ms-patients"} | json | patientId != "" | line_format "{{.time}} patientId={{.patientId}} action={{.action}} msg={{.msg}}"' \
+  --data-urlencode "start=$(date -d '1 hour ago' +%s)000000000" \
+  --data-urlencode "end=$(date +%s)000000000" \
+  --data-urlencode "limit=50"
+
+##INSTALAR GATEKEEPER
+kubectl apply -f https://raw.githubusercontent.com/open-policy-agent/gatekeeper/release-3.15/deploy/gatekeeper.yaml
+
+##ESCALAR A CERO ALLOY (AL SER UN DAEMONSET TENEMOS QUE EJECUTAR "PATCH" - LE COLOCAMOS UN NODE-SELECTOR QUE NO COINCIDE CON NINGÚN NODO
+kubectl patch daemonset <daemonset-name> -n observability -p '{"spec":{"template":{"spec":{"nodeSelector":{"apagado":"true"}}}}}'
+
+##REGRESAR ALLOY A LA NORMALIDAD
+kubectl patch daemonset <daemonset-name> -n observability -p '{"spec":{"template":{"spec":{"nodeSelector":null}}}}'
+
+##EXTRAER LA CONFIGURACIÓN DE ALLOY
+kubectl get configmap alloy-config -n observability -o yaml > /tmp/alloy-config.yaml
+
+##LANZAR ALLOY CON HELM
+1. helm repo add grafana https://grafana.github.io/helm-charts
+2. helm repo update
+3. helm install alloy grafana/alloy --namespace observability --create-namespace --set controller.type=daemonset --set alloy.configMap.create=true --set alloy.configMap.name=alloy-config --set-file alloy.configMap.content=alloy.hcl
+
+##EJECUTAR UN COMANDO EN UN CONTAINER
+kubectl exec -it curl-test -- sh
+
+##PORT-FORWARD - PORTS
+-KIALI: 20001
+-KIALI-METRICS-PROMETHEUS: 9090
+-PROMETHEUS: 9090
+-JAEGER: 16686
+-GRAFANA: 3000
+-LOKI: 3100
+
+##VERIFICAR SI UN SERVICIO PUEDE LISTAR SERVICIOS - SERVICE-ACCOUNT
+kubectl auth can-i list services -n <namespace_name> --as=system:serviceaccount:<namespace>:<sa_name>
+
+##VERIFICAR AUTHENTICATION POLICIES
+istioctl x authz check <pod_name> -n <namespace_name>
+
+##COMANDOS PARTICULARES A LA SOLUCION
+##CURL PARA GENERAR UNA CITA MÉDICA
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patient_id": "6",
+    "doctor_id": "1",
+    "appointment_date": "21/01/25",
+    "appointment_time": "18:30",
+    "status": "ACTIVA"
+  }' \
+  http://ms-appointments:8080/api/appointments
+
+##CURL PARA TRAER UN DOCTOR POR ID
+for i in $(seq 0 50); do \
+curl http://ms-doctors:8080/api/doctors/1
+done
+
+##CURL PARA TRAER UN PACIENTE POR ID
+for i in $(seq 0 50); do \
+curl http://ms-patients:8080/api/patients/5
+done
+
+##CURL PARA TRAER UN PACIENTE POR ID MOSTRANDO EL HTTP STATUS_CODE
+for i in $(seq 1 50); do \
+  curl -s -o /dev/null -w "%{http_code}\n" \
+  http://ms-patients:8080/api/patients/5
+done
+
+##COMANDOS EXTRAS
+##LOKI NECESITA UN PV, EN MI CASO CREE UN PV (hostPath)
+sudo mkdir -p /tmp/data/pv-1
+sudo chmod -R 0777 /tmp/data/pv-1
+
+##QUERY A LOKI PARA OBTENER LOGS DE HACE 1h
+curl -G "http://localhost:3100/loki/api/v1/query_range" --data-urlencode 'query={container="ms-patients"}' --data-urlencode "start=$(date -d '1 hour ago' +%s)000000000" --data-urlencode "end=$(date +%s)000000000" --data-urlencode "limit=50"
+
+##FQDN SERVICES
+http://prometheus.monitoring.svc.cluster.local:9090
+http://alloy.observability.svc.cluster.local:12345
+http://jaeger-collector.istio-system.svc.cluster.local:4317
+http://loki.istio-system.svc.cluster.local:3100
+
+##FILTRO GRAFANA
+{container="ms-patients"} |~ "/api/patients"
+
+##HEADERS LOKI/GRAFANA 
+HTTP headers:
+Header: X-Scope-OrgID
+Value:  configured
+
+##WGET
+wget -S -O- http://ms-patients:8080/api/patients/6
+
+
+
+
